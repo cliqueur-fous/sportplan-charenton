@@ -1,0 +1,6 @@
+node_modules/
+data/users.json
+data/events.json
+data/infras.json
+data/assocs.json
+data/vacances.json

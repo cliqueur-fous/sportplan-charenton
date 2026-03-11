@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SportPlan — Connexion</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+:root{--navy:#0d1b2a;--blue:#1b4f8a;--accent:#e8a020;--surface:#f5f7fa;--white:#fff;--text:#1a2332;--muted:#6b7a8d;--border:#dde3ec;--danger:#c0392b;--shadow:0 4px 24px rgba(13,27,42,.10);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--white);border-radius:20px;padding:2.5rem 2rem;width:380px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.login-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;text-align:center;margin-bottom:.3rem;color:var(--navy);}
+.login-logo span{color:var(--accent);}
+.login-sub{text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:2rem;}
+.form-group{margin-bottom:1.1rem;}
+.form-label{display:block;font-size:.82rem;font-weight:600;color:var(--navy);margin-bottom:.35rem;}
+.form-control{width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--text);background:var(--surface);transition:border-color .15s;}
+.form-control:focus{outline:none;border-color:var(--blue);background:white;}
+.btn-login{width:100%;padding:.75rem;border-radius:12px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;background:var(--accent);color:var(--navy);transition:all .18s;margin-top:.5rem;}
+.btn-login:hover{background:#f0b030;transform:translateY(-1px);}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.error-msg{background:#fff3f3;border:1px solid #f5c6cb;color:var(--danger);border-radius:8px;padding:.55rem .8rem;font-size:.82rem;margin-bottom:1rem;display:none;text-align:center;}
+.error-msg.show{display:block;}
+.footer-text{text-align:center;font-size:.72rem;color:var(--muted);margin-top:1.5rem;}
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="login-logo">SportPlan <span>Charenton-le-Pont</span></div>
+  <div class="login-sub">Direction des Sports — Planning des equipements sportifs</div>
+  <div class="error-msg" id="errorMsg"></div>
+  <form id="loginForm" onsubmit="doLogin(event)">
+    <div class="form-group">
+      <label class="form-label">Identifiant</label>
+      <input class="form-control" id="username" type="text" placeholder="Votre identifiant" autocomplete="username" required autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input class="form-control" id="password" type="password" placeholder="Votre mot de passe" autocomplete="current-password" required>
+    </div>
+    <button class="btn-login" type="submit" id="btnLogin">Se connecter</button>
+  </form>
+  <div class="footer-text">Acces reserve au personnel autorise</div>
+</div>
+<script>
+async function doLogin(e){
+  e.preventDefault();
+  const btn=document.getElementById('btnLogin');
+  const err=document.getElementById('errorMsg');
+  btn.disabled=true;
+  err.classList.remove('show');
+  try{
+    const res=await fetch('/api/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        username:document.getElementById('username').value.trim(),
+        password:document.getElementById('password').value
+      })
+    });
+    const data=await res.json();
+    if(res.ok){window.location.href='/';}
+    else{err.textContent=data.error||'Erreur de connexion';err.classList.add('show');}
+  }catch(ex){err.textContent='Erreur de connexion au serveur';err.classList.add('show');}
+  btn.disabled=false;
+}
+</script>
+</body>
+</html>
