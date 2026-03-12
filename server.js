@@ -70,6 +70,11 @@ function requireAdmin(req, res, next) {
   res.status(403).json({ error: 'Acces refuse' });
 }
 
+function requireEditor(req, res, next) {
+  if (req.session && req.session.user && req.session.user.role !== 'consultation') return next();
+  res.status(403).json({ error: 'Acces refuse — compte en consultation seule' });
+}
+
 // --- Auth routes ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -152,7 +157,7 @@ app.get('/api/data', requireAuth, (req, res) => {
   res.json(result);
 });
 
-app.post('/api/data', requireAuth, (req, res) => {
+app.post('/api/data', requireAuth, requireEditor, (req, res) => {
   const { events, infras, assocs, vacances } = req.body;
   if (events !== undefined) writeJSON('events.json', events);
   if (infras !== undefined) writeJSON('infras.json', infras);

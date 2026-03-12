@@ -13,7 +13,7 @@
   <div class="header-actions">
     <span class="badge-infra" id="infraCount">21 sites</span>
     <button class="btn btn-print" onclick="showPage('extraction')">🖨️ Extraction</button>
-    <button class="btn btn-primary" onclick="openNewEventModal()">+ Nouveau créneau</button>
+    <button class="btn btn-primary edit-only" onclick="openNewEventModal()">+ Nouveau créneau</button>
     <span style="font-size:.78rem;color:#8899aa;margin-left:.5rem" id="headerUser"></span>
     <button class="btn" onclick="doLogout()" style="background:#1e2d3d;color:#8899aa;font-size:.76rem;border:1px solid #2a3f55">Deconnexion</button>
   </div>
@@ -163,7 +163,7 @@
     <div class="page" id="page-infrastructures">
       <div class="toolbar">
         <span class="toolbar-title">Gestion des sites</span>
-        <button class="btn btn-primary" onclick="openInfraModal()">+ Ajouter un site</button>
+        <button class="btn btn-primary edit-only" onclick="openInfraModal()">+ Ajouter un site</button>
       </div>
       <div class="infra-admin-grid" id="infraAdminGrid"></div>
     </div>
@@ -174,8 +174,8 @@
         <span class="toolbar-title">Associations &amp; Organismes</span>
         <div style="display:flex;gap:.6rem;align-items:center">
           <input type="text" id="assocSearch" class="form-control" placeholder="🔍 Rechercher…" style="width:200px;padding:.38rem .7rem;font-size:.82rem" oninput="renderAssocAdmin()">
-          <button class="btn" onclick="openGroupModal()" style="background:#eef4fb;color:#1b4f8a;border:1px solid #c5d9ef;font-size:.78rem">📁 Groupes</button>
-          <button class="btn btn-primary" onclick="openAssocModal()">+ Ajouter</button>
+          <button class="btn edit-only" onclick="openGroupModal()" style="background:#eef4fb;color:#1b4f8a;border:1px solid #c5d9ef;font-size:.78rem">📁 Groupes</button>
+          <button class="btn btn-primary edit-only" onclick="openAssocModal()">+ Ajouter</button>
         </div>
       </div>
       <div id="assocSummary" style="margin-bottom:1rem;font-size:.83rem;color:var(--muted)"></div>
@@ -187,8 +187,8 @@
       <div class="toolbar">
         <span class="toolbar-title">Vacances scolaires</span>
         <button class="btn" onclick="diagVacances()" style="background:#607d8b;color:white;font-size:.78rem">🔍 Diagnostic dates</button>
-        <button class="btn" onclick="resetVacances()" style="background:#e67e22;color:white;font-size:.78rem">↺ Réinitialiser Zone C</button>
-        <button class="btn btn-primary" onclick="openVacModal()">+ Ajouter une période</button>
+        <button class="btn edit-only" onclick="resetVacances()" style="background:#e67e22;color:white;font-size:.78rem">↺ Réinitialiser Zone C</button>
+        <button class="btn btn-primary edit-only" onclick="openVacModal()">+ Ajouter une période</button>
       </div>
       <div style="background:#fff8e1;border:1px solid #f9c934;border-radius:10px;padding:.8rem 1.1rem;margin-bottom:1.2rem;font-size:.83rem;color:#7a5500;display:flex;gap:.7rem;align-items:flex-start">
         <span style="font-size:1.1rem">💡</span>
@@ -237,7 +237,8 @@
       <div class="form-group">
         <label class="form-label">Role</label>
         <select class="form-control" id="userRole">
-          <option value="user">Utilisateur</option>
+          <option value="consultation">Consultation (lecture seule)</option>
+          <option value="user">Utilisateur (lecture + ecriture)</option>
           <option value="admin">Administrateur</option>
         </select>
       </div>

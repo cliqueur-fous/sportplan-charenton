@@ -738,6 +738,7 @@ function fillInfraSelect(sel){
   ).join('');
 }
 function openNewEventModal(){
+  if(!canEdit())return;
   editEv=null;
   document.getElementById('modalTitle').textContent='Nouveau créneau';
   document.getElementById('btnDelEv').style.display='none';
@@ -761,6 +762,7 @@ function openNewEventModalOnCell(date,time){
   fillTimeSelects(snap,TIME_SLOTS[ei]);
 }
 function editEvent(id){
+  if(!canEdit())return;
   const ev=events.find(e=>e.id==id);if(!ev)return;
   editEv=id;
   document.getElementById('modalTitle').textContent='Modifier le créneau';
@@ -930,6 +932,7 @@ function getRecDaysSelection(){
 // CRUD INFRASTRUCTURES
 // ══════════════════════════════════════════
 function openInfraModal(id){
+  if(!canEdit())return;
   editInfra=id||null;
   const inf=id?infrastructures.find(i=>i.id==id):null;
   document.getElementById('infraModalTitle').textContent=inf?'Modifier le site':'Nouveau site';
@@ -943,6 +946,7 @@ function openInfraModal(id){
   openModal('infraModal');
 }
 function saveInfra(){
+  if(!canEdit())return;
   const name=document.getElementById('infraName').value.trim();
   if(!name){showToast('Nom requis','error');return;}
   const data={name,type:document.getElementById('infraType').value,
@@ -1007,6 +1011,7 @@ function dateRange(from, to){
 
 // ── CRUD VACANCES ──
 function openVacModal(id){
+  if(!canEdit())return;
   editVac=id||null;
   const v=id?vacances.find(x=>x.id==id):null;
   document.getElementById('vacModalTitle').textContent=v?'Modifier la période':'Nouvelle période de vacances';
@@ -1050,6 +1055,7 @@ function normalizeDate(d){
   return d;
 }
 function saveVac(){
+  if(!canEdit())return;
   const name=document.getElementById('vacName').value.trim();
   const from=normalizeDate(document.getElementById('vacFrom').value);
   const to=normalizeDate(document.getElementById('vacTo').value);
@@ -1102,6 +1108,7 @@ function renderVacAdmin(){
 // CRUD ASSOCIATIONS
 // ══════════════════════════════════════════
 function openAssocModal(id){
+  if(!canEdit())return;
   editAssoc=id||null;
   const a=id?associations.find(x=>x.id==id):null;
   document.getElementById('assocModalTitle').textContent=a?'Modifier l\'association':'Nouvelle association';
@@ -1116,6 +1123,7 @@ function openAssocModal(id){
   openModal('assocModal');
 }
 function saveAssoc(){
+  if(!canEdit())return;
   const name=document.getElementById('assocName').value.trim();
   if(!name){showToast('Nom requis','error');return;}
   const data={name,
@@ -1329,6 +1337,8 @@ async function doLogout(){
 let currentUser=null;
 let editUserId=null;
 
+function canEdit(){return currentUser&&currentUser.role!=='consultation';}
+
 async function loadCurrentUser(){
   try{
     const res=await fetch('/api/me');
@@ -1337,6 +1347,11 @@ async function loadCurrentUser(){
       document.getElementById('headerUser').textContent=currentUser.name||currentUser.username;
       if(currentUser.role==='admin'){
         document.getElementById('nav-users').style.display='';
+      }
+      // Hide edit buttons for consultation users
+      if(!canEdit()){
+        document.querySelectorAll('.edit-only').forEach(el=>el.style.display='none');
+        document.body.classList.add('readonly-mode');
       }
     }
   }catch(e){}
@@ -1355,7 +1370,7 @@ async function renderUsers(){
       html+=`<tr>
         <td><strong>${esc(u.name)}</strong></td>
         <td>${esc(u.username)}</td>
-        <td><span style="background:${u.role==='admin'?'#e74c3c':'#3498db'};color:white;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:600">${u.role==='admin'?'Admin':'Utilisateur'}</span></td>
+        <td><span style="background:${u.role==='admin'?'#e74c3c':u.role==='consultation'?'#95a5a6':'#3498db'};color:white;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:600">${u.role==='admin'?'Admin':u.role==='consultation'?'Consultation':'Utilisateur'}</span></td>
         <td><button class="btn" style="font-size:.7rem;padding:3px 6px;background:#eef4fb;color:#1b4f8a;border:none" onclick="openUserModal(${u.id},'${esc(u.name)}','${esc(u.username)}','${u.role}')">✏️</button></td>
       </tr>`;
     });

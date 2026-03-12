@@ -241,4 +241,8 @@ header{background:var(--navy);color:white;padding:0 1.8rem;height:62px;display:f
 .print-planning-grid td{border:1px solid var(--border);padding:1px 2px;vertical-align:top;font-size:.65rem;min-width:80px;}
 .print-planning-grid .time-col{width:45px;text-align:right;font-size:.6rem;color:var(--muted);background:#fafbfc;padding-right:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .print-ev-block{border-radius:3px;padding:2px 4px;font-size:.6rem;font-weight:500;margin-bottom:1px;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+/* Readonly mode for consultation users */
+.readonly-mode .cal-cell,.readonly-mode .cal-sub-col,.readonly-mode .month-cell{cursor:default;pointer-events:none;}
+.readonly-mode .cal-cell .ev-block,.readonly-mode .cal-sub-col .ev-block,.readonly-mode .month-cell .ev-badge{pointer-events:auto;cursor:default;}
+.readonly-mode .infra-card,.readonly-mode .assoc-card,.readonly-mode .vac-card{cursor:default;}
 @media(max-width:768px){.sidebar{display:none;}.main{padding:1rem;}.form-row{grid-template-columns:1fr;}.extract-grid{grid-template-columns:1fr;}}
