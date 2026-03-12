@@ -10,8 +10,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text
 
 /* ── HEADER ── */
 header{background:var(--navy);color:white;padding:0 1.8rem;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.25);}
-.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:-.3px;}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:-.3px;display:flex;align-items:center;gap:.5rem;}
 .logo span{color:var(--accent);}
+.logo-img{height:38px;border-radius:4px;}
 .header-actions{display:flex;gap:.8rem;align-items:center;}
 .btn{padding:.42rem 1rem;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;font-size:.83rem;transition:all .18s;white-space:nowrap;}
 .btn-primary{background:var(--accent);color:var(--navy);}

@@ -161,10 +161,11 @@ app.post('/api/data', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Serve login page (no auth) ---
+// --- Serve login page and public assets (no auth) ---
 app.get('/login.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
+app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
 // --- Serve app (requires auth) ---
 app.get('/', requireAuth, (req, res) => {
