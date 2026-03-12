@@ -39,10 +39,20 @@ header{background:var(--navy);color:white;padding:0 1.8rem;height:62px;display:f
 .nav-item{padding:.5rem 1.1rem;cursor:pointer;display:flex;align-items:center;gap:.65rem;font-size:.85rem;border-left:3px solid transparent;transition:all .15s;}
 .nav-item:hover{background:var(--surface);}
 .nav-item.active{background:#eef4fb;border-left-color:var(--accent);color:var(--blue);font-weight:500;}
-.infra-group-header{padding:.26rem 1.1rem .08rem;font-size:.67rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-top:.3rem;background:#f0f4fa;border-top:1px solid var(--border);}
+.infra-group-header{padding:.26rem 1.1rem .08rem;font-size:.67rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-top:.3rem;background:#f0f4fa;border-top:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:.4rem;}
+.infra-group-header:hover{background:#e4ecf6;}
+.infra-group-header .group-check{width:14px;height:14px;accent-color:var(--blue);cursor:pointer;}
 .infra-item{padding:.38rem 1.1rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;font-size:.8rem;border-left:3px solid transparent;transition:all .15s;}
 .infra-item:hover{background:var(--surface);}
 .infra-item.active{background:#eef4fb;border-left-color:var(--blue);color:var(--blue);font-weight:500;}
+.infra-item .site-check{width:14px;height:14px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;}
+/* Multi-site side-by-side */
+.multi-site-header{display:flex;font-size:.62rem;font-weight:600;gap:0;}
+.multi-site-col-header{flex:1;text-align:center;padding:2px 1px;border-right:1px solid rgba(255,255,255,.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.multi-site-col-header:last-child{border-right:none;}
+.cal-cell-multi{display:flex;gap:0;}
+.cal-cell-multi .cal-sub-col{flex:1;border-right:1px dashed var(--border);min-height:19px;padding:1px 1px;position:relative;}
+.cal-cell-multi .cal-sub-col:last-child{border-right:none;}
 .infra-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .infra-count{margin-left:auto;font-size:.68rem;background:var(--surface);border-radius:10px;padding:1px 6px;color:var(--muted);}
 
@@ -231,6 +241,12 @@ header{background:var(--navy);color:white;padding:0 1.8rem;height:62px;display:f
   .print-date-separator{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   @page{margin:0;size:A4 portrait;}
 }
+/* Print graphical planning */
+.print-planning-grid{width:100%;border-collapse:collapse;border:1px solid var(--border);margin-bottom:1rem;}
+.print-planning-grid th{background:var(--navy);color:white;padding:.4rem .3rem;font-size:.7rem;text-align:center;border:1px solid #2a3f55;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.print-planning-grid td{border:1px solid var(--border);padding:1px 2px;vertical-align:top;font-size:.65rem;min-width:80px;}
+.print-planning-grid .time-col{width:45px;text-align:right;font-size:.6rem;color:var(--muted);background:#fafbfc;padding-right:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.print-ev-block{border-radius:3px;padding:2px 4px;font-size:.6rem;font-weight:500;margin-bottom:1px;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 @media(max-width:768px){.sidebar{display:none;}.main{padding:1rem;}.form-row{grid-template-columns:1fr;}.extract-grid{grid-template-columns:1fr;}}
 </style>
 </head>
@@ -263,7 +279,8 @@ header{background:var(--navy);color:white;padding:0 1.8rem;height:62px;display:f
       </div>
       <div>
         <div class="sidebar-title">Filtrer par site</div>
-        <div class="infra-item active" onclick="filterByInfra('all')" id="filter-all">
+        <div class="infra-item" onclick="toggleAllSites()" id="filter-all" style="border-left-color:var(--accent)">
+          <input type="checkbox" class="site-check" id="check-all" checked onclick="event.stopPropagation();toggleAllSites()">
           <span class="infra-dot" style="background:#1b4f8a"></span>
           Tous les sites
           <span class="infra-count" id="cnt-all">0</span>
@@ -327,6 +344,13 @@ header{background:var(--navy);color:white;padding:0 1.8rem;height:62px;display:f
               <select class="form-control" id="extSiteOrg">
                 <option value="bysite">Grouper par site puis par date</option>
                 <option value="bydate">Grouper par date puis par site</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Format d'impression</label>
+              <select class="form-control" id="extFormat">
+                <option value="table">Tableau détaillé</option>
+                <option value="graphical">Planning graphique (visuel)</option>
               </select>
             </div>
             <button class="btn-extract" onclick="generateExtract('site')">🔍 Générer l'extraction</button>
@@ -886,7 +910,8 @@ let editVac=null;
 let events=[];
 let nextEventId=1;
 let nextInfraId=Math.max(...infrastructures.map(i=>i.id),0)+1;
-let currentView='week',currentDate=new Date(),activeFilter='all';
+let currentView='week',currentDate=new Date();
+let activeFilters=new Set(); // empty = all sites shown
 let editEv=null,editInfra=null;
 
 function save(){
@@ -925,15 +950,15 @@ function prevPeriod(){if(currentView==='month')currentDate.setMonth(currentDate.
 function nextPeriod(){if(currentView==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderCalendar();}
 function goToToday(){currentDate=new Date();renderCalendar();}
 function renderCalendar(){if(currentView==='week')renderWeek();else if(currentView==='month')renderMonth();else renderList();}
-function filteredEvents(){return activeFilter==='all'?events:events.filter(e=>e.infraId==activeFilter);}
+function filteredEvents(){return activeFilters.size===0?events:events.filter(e=>activeFilters.has(e.infraId));}
+function getSelectedInfraIds(){return activeFilters.size===0?infrastructures.map(i=>i.id):[...activeFilters];}
+function isAllSelected(){return activeFilters.size===0;}
 
 // ── VUE SEMAINE ── avec plage horaire dans les blocs ──
 function renderWeek(){
   const ws=weekStart(currentDate);
   const days=Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d;});
   const today=new Date();today.setHours(0,0,0,0);
-  document.getElementById('weekLabel').textContent=
-    `${days[0].getDate()} ${MONTHS[days[0].getMonth()].slice(0,3)} — ${days[6].getDate()} ${MONTHS[days[6].getMonth()].slice(0,3)} ${days[6].getFullYear()}`;
 
   // Badge vacances si la semaine est en vacances
   const anyVac=days.some(d=>isInVacances(fmt(d)));
@@ -942,8 +967,19 @@ function renderWeek(){
   document.getElementById('weekLabel').innerHTML=
     `${days[0].getDate()} ${MONTHS[days[0].getMonth()].slice(0,3)} — ${days[6].getDate()} ${MONTHS[days[6].getMonth()].slice(0,3)} ${days[6].getFullYear()}${weekLabelSuffix}`;
 
-  const cols='62px repeat(7,1fr)';
   const evts=filteredEvents();
+  const selIds=getSelectedInfraIds();
+  const multiSite=!isAllSelected()&&selIds.length>1&&selIds.length<=6;
+
+  if(multiSite){
+    renderWeekMultiSite(days,today,evts,selIds);
+  } else {
+    renderWeekNormal(days,today,evts);
+  }
+}
+
+function renderWeekNormal(days,today,evts){
+  const cols='62px repeat(7,1fr)';
   let html=`<div class="calendar-grid">`;
   html+=`<div class="cal-header-row" style="grid-template-columns:${cols}"><div style="width:62px"></div>`;
   days.forEach(d=>{
@@ -974,6 +1010,53 @@ function renderWeek(){
           <div class="ev-title">${esc(ev.title)}</div>
           <div class="ev-meta">${esc(sn)}${ev.assocId?(' · '+esc((associations.find(a=>a.id==ev.assocId)||{name:''}).name)):(ev.responsable?' · '+esc(ev.responsable):'')}</div>
         </div>`;
+      });
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`</div></div>`;
+  document.getElementById('calendarContainer').innerHTML=html;
+}
+
+function renderWeekMultiSite(days,today,evts,siteIds){
+  const sites=siteIds.map(id=>infrastructures.find(i=>i.id===id)).filter(Boolean);
+  const nSites=sites.length;
+  const cols=`62px repeat(7,1fr)`;
+  let html=`<div class="calendar-grid">`;
+  // Header row: jour names
+  html+=`<div class="cal-header-row" style="grid-template-columns:${cols}"><div style="width:62px"></div>`;
+  days.forEach(d=>{
+    const isT=d.getTime()===today.getTime();
+    const isV=isInVacances(fmt(d));
+    html+=`<div class="cal-day-header ${isT?'today':''}" style="${isV?'background:rgba(249,201,52,.22);':''}">
+      ${DAYS[d.getDay()===0?6:d.getDay()-1]}
+      <span class="day-num" style="${isV?'color:#c47a00':''}">${d.getDate()}</span>
+      <div class="multi-site-header">
+        ${sites.map(s=>{const sn=s.name.includes(' - ')?s.name.split(' - ').slice(1).join(' - '):s.name;return `<div class="multi-site-col-header" style="background:${s.color};color:${isLight(s.color)?'#222':'#fff'};border-radius:3px;margin:1px;padding:1px 2px;" title="${esc(s.name)}">${esc(sn)}</div>`;}).join('')}
+      </div>
+    </div>`;
+  });
+  html+=`</div><div class="cal-body">`;
+  TIME_SLOTS.forEach(slot=>{
+    const[h,m]=slot.split(':').map(Number);const q=m/15;
+    html+=`<div class="cal-row q${q}" style="grid-template-columns:${cols}">`;
+    html+=`<div class="cal-time ${m===0?'hmark':''}">${m===0?slot:(m===30?'·30':'·')}</div>`;
+    days.forEach(d=>{
+      const ds=fmt(d);
+      const isV=isInVacances(ds);
+      html+=`<div class="cal-cell cal-cell-multi" style="${isV?'background:rgba(249,201,52,.06);':''}padding:0;">`;
+      sites.forEach(s=>{
+        const ce=evts.filter(e=>e.date===ds&&e.startTime===slot&&e.infraId===s.id);
+        html+=`<div class="cal-sub-col" onclick="openNewEventModalOnCell('${ds}','${slot}')">`;
+        ce.forEach(ev=>{
+          const bg=s.color;const fg=isLight(bg)?'#222':'#fff';
+          html+=`<div class="event-block" style="background:${bg};color:${fg};font-size:.6rem;padding:2px 3px" onclick="event.stopPropagation();editEvent(${ev.id})">
+            <div class="ev-time" style="font-size:.58rem">⏱ ${ev.startTime}–${ev.endTime}</div>
+            <div class="ev-title" style="font-size:.6rem">${esc(ev.title)}</div>
+          </div>`;
+        });
+        html+=`</div>`;
       });
       html+=`</div>`;
     });
@@ -1055,15 +1138,15 @@ function renderList(){
 // EXTRACTION / IMPRESSION
 // ══════════════════════════════════════════
 function initExtractionPage(){
-  // Remplir le select des sites
+  // Remplir le select des sites avec groupes parents cliquables
   const sel=document.getElementById('extSite');
   const groups={};
   infrastructures.forEach(i=>{const g=i.group||i.name;if(!groups[g])groups[g]=[];groups[g].push(i);});
   let opts=`<option value="all">— Tous les sites —</option>`;
   Object.entries(groups).forEach(([g,arr])=>{
-    opts+=`<optgroup label="${esc(g)}">`;
-    arr.forEach(i=>opts+=`<option value="${i.id}">${esc(i.name)}</option>`);
-    opts+=`</optgroup>`;
+    // Groupe parent sélectionnable (préfixé group: pour le distinguer)
+    if(arr.length>1) opts+=`<option value="group:${esc(g)}" style="font-weight:bold;background:#f0f4fa">🏢 ${esc(g)} (${arr.length} sites)</option>`;
+    arr.forEach(i=>opts+=`<option value="${i.id}">&nbsp;&nbsp;&nbsp;${esc(i.name)}</option>`);
   });
   sel.innerHTML=opts;
   // Dates par défaut : semaine en cours
@@ -1120,16 +1203,32 @@ function generateExtract(type){
   const from=document.getElementById('extSiteFrom').value;
   const to=document.getElementById('extSiteTo').value;
   const org=document.getElementById('extSiteOrg').value;
+  const format=document.getElementById('extFormat').value;
   if(!from||!to){showToast('Choisissez une plage de dates','error');return;}
   if(from>to){showToast('La date de début doit être avant la date de fin','error');return;}
-  // Lire sites sélectionnés
+  // Lire sites sélectionnés (avec support groupes parents)
   const sel=document.getElementById('extSite');
   const chosen=[...sel.options].filter(o=>o.selected).map(o=>o.value);
-  const infraIds=chosen.includes('all')?null:chosen.map(Number);
-  buildAndShowExtract(infraIds,from,to,org,null);
+  let infraIds=null;
+  if(!chosen.includes('all')){
+    const idSet=new Set();
+    const groups={};
+    infrastructures.forEach(i=>{const g=i.group||i.name;if(!groups[g])groups[g]=[];groups[g].push(i);});
+    chosen.forEach(v=>{
+      if(v.startsWith('group:')){
+        const gName=v.slice(6);
+        (groups[gName]||[]).forEach(i=>idSet.add(i.id));
+      } else {
+        idSet.add(Number(v));
+      }
+    });
+    infraIds=[...idSet];
+  }
+  buildAndShowExtract(infraIds,from,to,org,null,format);
 }
 
-function buildAndShowExtract(infraIds,from,to,org,label){
+function buildAndShowExtract(infraIds,from,to,org,label,format){
+  format=format||'table';
   // Filtrer les événements
   let evts=events.filter(e=>e.date>=from&&e.date<=to);
   if(infraIds)evts=evts.filter(e=>infraIds.includes(e.infraId));
@@ -1142,7 +1241,12 @@ function buildAndShowExtract(infraIds,from,to,org,label){
   const title=label?`${label} — ${dateStr}`:dateStr;
   document.getElementById('previewTitle').textContent='Aperçu : '+title;
 
-  let html=buildPrintHTML(evts,infraIds,from,to,org,title);
+  let html;
+  if(format==='graphical'){
+    html=buildPrintGraphicalHTML(evts,infraIds,from,to,title);
+  } else {
+    html=buildPrintHTML(evts,infraIds,from,to,org,title);
+  }
   document.getElementById('previewContent').innerHTML=html;
   const prev=document.getElementById('extractPreview');
   prev.classList.add('visible');
@@ -1241,6 +1345,91 @@ function buildPrintHTML(evts,infraIds,from,to,org,title){
       });
       html+=`</tbody></table></div>`;
     });
+  }
+  return html;
+}
+
+function buildPrintGraphicalHTML(evts,infraIds,from,to,title){
+  const now=new Date();
+  const printedAt=`${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+  let html=`<div class="print-header">
+    <div class="print-header-left">
+      <h1>SportPlan <span>Charenton-le-Pont</span></h1>
+      <p>Direction des Sports — Planning des équipements sportifs</p>
+    </div>
+    <div class="print-header-right">
+      <strong>${esc(title)}</strong><br>
+      Imprimé le ${printedAt}
+    </div>
+  </div>`;
+
+  if(!evts.length){
+    html+=`<p style="color:var(--muted);font-style:italic;padding:1rem 0">Aucun créneau sur la période sélectionnée.</p>`;
+    return html;
+  }
+
+  // Group events by week
+  const fromD=new Date(from+'T00:00:00');
+  const toD=new Date(to+'T00:00:00');
+  let weekStartDate=weekStart(fromD);
+  const siteIds=infraIds||[...new Set(evts.map(e=>e.infraId))];
+  const sites=siteIds.map(id=>infrastructures.find(i=>i.id===id)).filter(Boolean);
+
+  while(weekStartDate<=toD){
+    const days=Array.from({length:7},(_,i)=>{const d=new Date(weekStartDate);d.setDate(weekStartDate.getDate()+i);return d;});
+    const weekEvts=evts.filter(e=>{const ds=e.date;return ds>=fmt(days[0])&&ds<=fmt(days[6]);});
+    if(weekEvts.length>0){
+      html+=`<div class="print-site-block">`;
+      html+=`<div class="print-site-title" style="background:var(--navy);color:white">📅 Semaine du ${days[0].getDate()} ${MONTHS[days[0].getMonth()]} au ${days[6].getDate()} ${MONTHS[days[6].getMonth()]} ${days[6].getFullYear()}</div>`;
+
+      // Find min/max hours for this week
+      let minH=22,maxH=7;
+      weekEvts.forEach(e=>{
+        const sh=parseInt(e.startTime.split(':')[0]);
+        const eh=parseInt(e.endTime.split(':')[0]);
+        if(sh<minH)minH=sh;
+        if(eh>maxH)maxH=eh;
+      });
+      if(minH>maxH){minH=7;maxH=22;}
+
+      html+=`<table class="print-planning-grid"><thead><tr><th style="width:45px">Heure</th>`;
+      days.forEach(d=>{
+        const isV=isInVacances(fmt(d));
+        html+=`<th style="${isV?'background:#c47a00;':''}">
+          ${DAYS[d.getDay()===0?6:d.getDay()-1]} ${d.getDate()}/${d.getMonth()+1}
+          ${isV?'<br><span style="font-size:.55rem">VACANCES</span>':''}
+        </th>`;
+      });
+      html+=`</tr></thead><tbody>`;
+
+      for(let h=minH;h<=maxH;h++){
+        for(let m=0;m<60;m+=30){
+          const slot=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+          html+=`<tr><td class="time-col">${m===0?slot:''}</td>`;
+          days.forEach(d=>{
+            const ds=fmt(d);
+            // Events starting at this slot or overlapping 30-min slots
+            const slotMin=h*60+m;
+            const ce=weekEvts.filter(e=>e.date===ds&&tmin(e.startTime)>=slotMin&&tmin(e.startTime)<slotMin+30);
+            html+=`<td>`;
+            ce.forEach(ev=>{
+              const inf=sites.find(s=>s.id===ev.infraId)||infrastructures.find(i=>i.id===ev.infraId);
+              const bg=inf?inf.color:'#1b4f8a';const fg=isLight(bg)?'#222':'#fff';
+              const sn=inf?(inf.name.includes(' - ')?inf.name.split(' - ').slice(1).join(' - '):inf.name):'';
+              const assoc=ev.assocId?associations.find(a=>a.id===ev.assocId):null;
+              html+=`<div class="print-ev-block" style="background:${bg};color:${fg}">
+                <strong>${ev.startTime}–${ev.endTime}</strong> ${esc(ev.title)}
+                ${sn?`<br>${esc(sn)}`:''}${assoc?` · ${esc(assoc.name)}`:''}
+              </div>`;
+            });
+            html+=`</td>`;
+          });
+          html+=`</tr>`;
+        }
+      }
+      html+=`</tbody></table></div>`;
+    }
+    weekStartDate.setDate(weekStartDate.getDate()+7);
   }
   return html;
 }
@@ -1757,15 +1946,26 @@ function renderStats(){
 function updateSidebar(){
   document.getElementById('infraCount').textContent=infrastructures.length+' sites';
   document.getElementById('cnt-all').textContent=events.length;
+  const allChecked=isAllSelected();
+  document.getElementById('check-all').checked=allChecked;
   const groups={};
   infrastructures.forEach(i=>{const g=i.group||i.name;if(!groups[g])groups[g]=[];groups[g].push(i);});
   let html='';
   Object.entries(groups).forEach(([g,arr])=>{
-    html+=`<div class="infra-group-header">${esc(g)}</div>`;
+    const groupIds=arr.map(i=>i.id);
+    const allGroupChecked=allChecked||groupIds.every(id=>activeFilters.has(id));
+    const someGroupChecked=!allChecked&&groupIds.some(id=>activeFilters.has(id));
+    html+=`<div class="infra-group-header" onclick="toggleGroup('${esc(g).replace(/'/g,"\\'")}')">
+      <input type="checkbox" class="group-check" ${allGroupChecked?'checked':''} ${someGroupChecked&&!allGroupChecked?'data-indeterminate="true"':''} onclick="event.stopPropagation();toggleGroup('${esc(g).replace(/'/g,"\\'")}')">
+      ${esc(g)}
+      <span style="margin-left:auto;font-size:.62rem;color:var(--muted)">${arr.length}</span>
+    </div>`;
     arr.forEach(i=>{
       const cnt=events.filter(e=>e.infraId==i.id).length;
       const sn=i.name.includes(' - ')?i.name.split(' - ').slice(1).join(' - '):i.name;
-      html+=`<div class="infra-item ${activeFilter==i.id?'active':''}" onclick="filterByInfra(${i.id})" id="filter-${i.id}">
+      const checked=allChecked||activeFilters.has(i.id);
+      html+=`<div class="infra-item ${checked&&!allChecked?'active':''}" onclick="toggleSite(${i.id})" id="filter-${i.id}">
+        <input type="checkbox" class="site-check" ${checked?'checked':''} onclick="event.stopPropagation();toggleSite(${i.id})">
         <span class="infra-dot" style="background:${i.color}"></span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(sn)}</span>
         <span class="infra-count">${cnt}</span>
@@ -1773,12 +1973,52 @@ function updateSidebar(){
     });
   });
   document.getElementById('infraFilterList').innerHTML=html;
+  // Set indeterminate state on group checkboxes
+  document.querySelectorAll('.group-check[data-indeterminate]').forEach(cb=>{cb.indeterminate=true;});
+}
+
+function toggleAllSites(){
+  activeFilters=new Set();
+  updateSidebar();renderCalendar();
+}
+function toggleSite(id){
+  if(isAllSelected()){
+    // Was "all" → switch to all except this one unchecked = select only this one
+    activeFilters=new Set([id]);
+  } else if(activeFilters.has(id)){
+    activeFilters.delete(id);
+    if(activeFilters.size===0) activeFilters=new Set(); // back to all
+  } else {
+    activeFilters.add(id);
+    if(activeFilters.size===infrastructures.length) activeFilters=new Set(); // all selected = reset
+  }
+  updateSidebar();renderCalendar();
+}
+function toggleGroup(groupName){
+  const groups={};
+  infrastructures.forEach(i=>{const g=i.group||i.name;if(!groups[g])groups[g]=[];groups[g].push(i);});
+  const arr=groups[groupName]||[];
+  const groupIds=arr.map(i=>i.id);
+  if(isAllSelected()){
+    // Was all → select only this group
+    activeFilters=new Set(groupIds);
+  } else {
+    const allInGroup=groupIds.every(id=>activeFilters.has(id));
+    if(allInGroup){
+      groupIds.forEach(id=>activeFilters.delete(id));
+      if(activeFilters.size===0) activeFilters=new Set();
+    } else {
+      groupIds.forEach(id=>activeFilters.add(id));
+      if(activeFilters.size===infrastructures.length) activeFilters=new Set();
+    }
+  }
+  updateSidebar();renderCalendar();
 }
 function filterByInfra(id){
-  activeFilter=id;
-  document.querySelectorAll('.infra-item').forEach(el=>el.classList.remove('active'));
-  const el=document.getElementById('filter-'+id);if(el)el.classList.add('active');
-  renderCalendar();
+  // Legacy compat
+  if(id==='all'){activeFilters=new Set();}
+  else{activeFilters=new Set([id]);}
+  updateSidebar();renderCalendar();
 }
 
 // ══════════════════════════════════════════
