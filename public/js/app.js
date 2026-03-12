@@ -118,6 +118,7 @@ let nextEventId=1;
 let nextInfraId=Math.max(...infrastructures.map(i=>i.id),0)+1;
 let currentView='week',currentDate=new Date();
 let activeFilters=new Set(); // empty = all sites shown
+let weekOrientation='normal'; // 'normal' = jours en colonnes, heures en lignes. 'transposed' = inverse
 let editEv=null,editInfra=null;
 
 function save(){
@@ -179,9 +180,18 @@ function renderWeek(){
 
   if(multiSite){
     renderWeekMultiSite(days,today,evts,selIds);
+  } else if(weekOrientation==='transposed'){
+    renderWeekTransposed(days,today,evts);
   } else {
     renderWeekNormal(days,today,evts);
   }
+}
+
+function toggleOrientation(){
+  weekOrientation=weekOrientation==='normal'?'transposed':'normal';
+  const btn=document.getElementById('btnOrientation');
+  if(btn) btn.textContent=weekOrientation==='normal'?'↻ Jours en lignes':'↻ Heures en colonnes';
+  renderCalendar();
 }
 
 function renderWeekNormal(days,today,evts){
@@ -269,6 +279,54 @@ function renderWeekMultiSite(days,today,evts,siteIds){
     html+=`</div>`;
   });
   html+=`</div></div>`;
+  document.getElementById('calendarContainer').innerHTML=html;
+}
+
+// ── VUE SEMAINE TRANSPOSÉE (jours en lignes, heures en colonnes) ──
+function renderWeekTransposed(days,today,evts){
+  // Only show full hours for column headers (too many otherwise)
+  const hours=[];
+  for(let h=7;h<=22;h++) hours.push(h);
+
+  let html=`<div class="calendar-grid" style="overflow-x:auto">`;
+  // Header: empty cell + hour columns
+  html+=`<table style="width:100%;border-collapse:collapse;min-width:${hours.length*70+100}px">`;
+  html+=`<thead><tr style="background:var(--navy);color:white">`;
+  html+=`<th style="padding:.5rem .6rem;text-align:left;font-family:'Syne',sans-serif;font-size:.72rem;min-width:100px;position:sticky;left:0;background:var(--navy);z-index:1">Jour</th>`;
+  hours.forEach(h=>{
+    html+=`<th style="padding:.4rem .2rem;text-align:center;font-size:.7rem;font-family:'Syne',sans-serif;min-width:70px">${String(h).padStart(2,'0')}:00</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+
+  days.forEach(d=>{
+    const ds=fmt(d);
+    const isT=d.getTime()===today.getTime();
+    const isV=isInVacances(ds);
+    const bg=isT?'background:#eef4fb;':isV?'background:#fffbee;':'';
+    html+=`<tr style="${bg}border-bottom:1px solid var(--border)">`;
+    html+=`<td style="padding:.4rem .6rem;font-weight:600;font-size:.8rem;border-right:1px solid var(--border);position:sticky;left:0;${isT?'background:#eef4fb;color:var(--blue)':isV?'background:#fffbee;color:#c47a00':'background:white'};z-index:1">
+      ${DAYS[d.getDay()===0?6:d.getDay()-1]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}
+      ${isV?'<span style="font-size:.6rem;display:block;color:#c47a00">VACANCES</span>':''}
+    </td>`;
+    hours.forEach(h=>{
+      // Gather events that start in this hour (any quarter)
+      const hourEvts=evts.filter(e=>e.date===ds&&parseInt(e.startTime.split(':')[0])===h);
+      html+=`<td style="padding:2px 2px;border-right:1px solid var(--border);vertical-align:top;cursor:pointer" onclick="openNewEventModalOnCell('${ds}','${String(h).padStart(2,'0')}:00')">`;
+      hourEvts.forEach(ev=>{
+        const inf=infrastructures.find(i=>i.id==ev.infraId);
+        const bg2=inf?inf.color:'#1b4f8a';const fg=isLight(bg2)?'#222':'#fff';
+        const sn=inf?(inf.name.includes(' - ')?inf.name.split(' - ').slice(1).join(' - '):inf.name):'?';
+        html+=`<div class="event-block" style="background:${bg2};color:${fg};font-size:.6rem;padding:2px 4px" onclick="event.stopPropagation();editEvent(${ev.id})">
+          <div style="font-size:.58rem;font-weight:700">${ev.startTime}–${ev.endTime}</div>
+          <div style="font-weight:600;font-size:.6rem">${esc(ev.title)}</div>
+          <div style="opacity:.8;font-size:.55rem">${esc(sn)}</div>
+        </div>`;
+      });
+      html+=`</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
   document.getElementById('calendarContainer').innerHTML=html;
 }
 
@@ -1184,16 +1242,25 @@ function updateSidebar(){
 }
 
 function toggleAllSites(){
-  activeFilters=new Set();
+  if(isAllSelected()){
+    activeFilters=new Set([-1]); // nothing matches = empty view
+  } else {
+    activeFilters=new Set(); // empty = all
+  }
   updateSidebar();renderCalendar();
 }
+function isNoneSelected(){return activeFilters.size===1&&activeFilters.has(-1);}
 function toggleSite(id){
-  if(isAllSelected()){
-    // Was "all" → switch to all except this one unchecked = select only this one
+  if(isNoneSelected()){
+    // Nothing selected → select just this one
     activeFilters=new Set([id]);
+  } else if(isAllSelected()){
+    // All selected → deselect this one = select all except this
+    const allExcept=infrastructures.filter(i=>i.id!==id).map(i=>i.id);
+    activeFilters=new Set(allExcept);
   } else if(activeFilters.has(id)){
     activeFilters.delete(id);
-    if(activeFilters.size===0) activeFilters=new Set(); // back to all
+    if(activeFilters.size===0) activeFilters=new Set([-1]); // none selected
   } else {
     activeFilters.add(id);
     if(activeFilters.size===infrastructures.length) activeFilters=new Set(); // all selected = reset
@@ -1205,15 +1272,17 @@ function toggleGroup(groupName){
   infrastructures.forEach(i=>{const g=i.group||i.name;if(!groups[g])groups[g]=[];groups[g].push(i);});
   const arr=groups[groupName]||[];
   const groupIds=arr.map(i=>i.id);
-  if(isAllSelected()){
-    // Was all → select only this group
+  if(isNoneSelected()){
+    activeFilters=new Set(groupIds);
+  } else if(isAllSelected()){
     activeFilters=new Set(groupIds);
   } else {
     const allInGroup=groupIds.every(id=>activeFilters.has(id));
     if(allInGroup){
       groupIds.forEach(id=>activeFilters.delete(id));
-      if(activeFilters.size===0) activeFilters=new Set();
+      if(activeFilters.size===0) activeFilters=new Set([-1]); // none
     } else {
+      activeFilters.delete(-1); // remove none marker if present
       groupIds.forEach(id=>activeFilters.add(id));
       if(activeFilters.size===infrastructures.length) activeFilters=new Set();
     }
