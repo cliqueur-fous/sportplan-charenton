@@ -153,10 +153,10 @@ const DAYS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const MONTHS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 function weekStart(d){const r=new Date(d);const day=r.getDay();r.setDate(r.getDate()+(day===0?-6:1-day));r.setHours(0,0,0,0);return r;}
 function setView(v){currentView=v;document.querySelectorAll('.view-tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+v).classList.add('active');renderCalendar();}
-function prevPeriod(){if(currentView==='month')currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);renderCalendar();}
-function nextPeriod(){if(currentView==='month')currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);renderCalendar();}
+function prevPeriod(){if(currentView==='month')currentDate.setMonth(currentDate.getMonth()-1);else if(currentView==='resource')currentDate.setDate(currentDate.getDate()-1);else currentDate.setDate(currentDate.getDate()-7);renderCalendar();}
+function nextPeriod(){if(currentView==='month')currentDate.setMonth(currentDate.getMonth()+1);else if(currentView==='resource')currentDate.setDate(currentDate.getDate()+1);else currentDate.setDate(currentDate.getDate()+7);renderCalendar();}
 function goToToday(){currentDate=new Date();renderCalendar();}
-function renderCalendar(){if(currentView==='week')renderWeek();else if(currentView==='month')renderMonth();else renderList();}
+function renderCalendar(){if(currentView==='week')renderWeek();else if(currentView==='month')renderMonth();else if(currentView==='resource')renderResource();else renderList();}
 function filteredEvents(){return activeFilters.size===0?events:events.filter(e=>activeFilters.has(e.infraId));}
 function getSelectedInfraIds(){return activeFilters.size===0?infrastructures.map(i=>i.id):[...activeFilters];}
 function isAllSelected(){return activeFilters.size===0;}
@@ -327,6 +327,91 @@ function renderWeekTransposed(days,today,evts){
     html+=`</tr>`;
   });
   html+=`</tbody></table></div>`;
+  document.getElementById('calendarContainer').innerHTML=html;
+}
+
+// ── VUE RESSOURCES (timeline) ──
+function renderResource(){
+  const d=new Date(currentDate);d.setHours(0,0,0,0);
+  const ds=fmt(d);
+  const today=new Date();today.setHours(0,0,0,0);
+  const isToday=d.getTime()===today.getTime();
+  const FULL_DAYS=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const dayLabel=`${FULL_DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const isVac=isInVacances(ds);
+  const vacObj=isVac?vacances.find(v=>ds>=v.from&&ds<=v.to):null;
+  const vacBadge=vacObj?` <span style="background:#fff8e1;color:#c47a00;border:1px solid #f9c934;border-radius:20px;padding:1px 9px;font-size:.72rem;font-weight:600;margin-left:.5rem">🏖️ ${esc(vacObj.name)}</span>`:'';
+  document.getElementById('weekLabel').innerHTML=dayLabel+vacBadge;
+
+  // Hours: 7h to 22h (quarter-hour slots)
+  const hours=[];
+  for(let h=7;h<=22;h++) hours.push(h);
+  const quarterSlots=[];
+  for(let h=7;h<=22;h++){
+    const mx=h===22?1:4; // 22h00 only for 22h
+    for(let q=0;q<mx;q++) quarterSlots.push(h*60+q*15);
+  }
+  const totalSlots=quarterSlots.length;
+
+  // Build groups of infras
+  const groups={};const groupOrder=[];
+  const selIds=getSelectedInfraIds();
+  const infrasToShow=infrastructures.filter(i=>selIds.includes(i.id));
+  infrasToShow.forEach(i=>{
+    const g=i.group||i.name;
+    if(!groups[g]){groups[g]=[];groupOrder.push(g);}
+    groups[g].push(i);
+  });
+
+  const evts=filteredEvents().filter(e=>e.date===ds);
+
+  // Calculate column widths: 180px for site name, then each hour gets equal space
+  let html=`<div class="resource-view">`;
+  html+=`<div class="resource-table-wrap"><table class="resource-table"><thead><tr>`;
+  html+=`<th class="resource-site-header">Sites</th>`;
+  hours.forEach(h=>{
+    html+=`<th class="resource-hour-header" colspan="4">${h}h</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+
+  groupOrder.forEach(gName=>{
+    // Group header row
+    html+=`<tr class="resource-group-row"><td class="resource-group-name" colspan="${1+hours.length*4}">${esc(gName)}</td></tr>`;
+    groups[gName].forEach(inf=>{
+      const siteEvts=evts.filter(e=>e.infraId===inf.id);
+      html+=`<tr class="resource-site-row">`;
+      html+=`<td class="resource-site-name"><span class="resource-dot" style="background:${inf.color}"></span>${esc(inf.name.replace(gName+' - ','').replace(gName+' – ',''))}</td>`;
+      // Render the time cells - one TD per quarter
+      // First build a map of which quarters are occupied
+      const occupied=new Map(); // minute -> event
+      siteEvts.forEach(ev=>{
+        const st=tmin(ev.startTime),en=tmin(ev.endTime);
+        for(let m=st;m<en;m+=15) occupied.set(m,ev);
+      });
+
+      let q=0;
+      while(q<totalSlots){
+        const m=quarterSlots[q];
+        const ev=occupied.get(m);
+        if(ev){
+          const st=tmin(ev.startTime),en=tmin(ev.endTime);
+          const span=Math.round((en-st)/15);
+          const assoc=associations.find(a=>a.id==ev.assocId);
+          const bgCol=assoc?assoc.color:inf.color;
+          const label=ev.title||(assoc?assoc.name:'');
+          html+=`<td class="resource-ev-cell" colspan="${span}" style="background:${bgCol}22;border-left:3px solid ${bgCol}" onclick="editEvent(${ev.id})" title="${esc(ev.startTime+'-'+ev.endTime+' '+label)}"><span class="resource-ev-text" style="color:${bgCol}">${esc(label)}</span></td>`;
+          // Skip the slots this event covers
+          q+=span;
+        } else {
+          html+=`<td class="resource-empty-cell" onclick="openNewEventModalOnCell('${ds}','${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}')"></td>`;
+          q++;
+        }
+      }
+      html+=`</tr>`;
+    });
+  });
+
+  html+=`</tbody></table></div></div>`;
   document.getElementById('calendarContainer').innerHTML=html;
 }
 
