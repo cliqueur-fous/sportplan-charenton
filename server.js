@@ -1,5 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
@@ -7,9 +9,12 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3500;
 const DATA_DIR = path.join(__dirname, 'data');
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure directories exist
+[DATA_DIR, SESSIONS_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
 // --- Data helpers ---
 function readJSON(file, fallback) {
@@ -18,6 +23,7 @@ function readJSON(file, fallback) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); }
   catch { return fallback; }
 }
+
 function writeJSON(file, data) {
   fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify(data, null, 2), 'utf8');
 }
@@ -31,7 +37,6 @@ function initUsers() {
     writeJSON('users.json', users);
     console.log('Default admin created: admin / admin');
   }
-  return users;
 }
 initUsers();
 
@@ -39,13 +44,19 @@ initUsers();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
+  store: new FileStore({
+    path: SESSIONS_DIR,
+    ttl: 86400,
+    retries: 0,
+    logFn: () => {},
+  }),
   secret: process.env.SESSION_SECRET || 'sportplan-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24h
+  cookie: { maxAge: 24 * 60 * 60 * 1000 },
 }));
 
-// Auth middleware
+// --- Auth middleware ---
 function requireAuth(req, res, next) {
   if (req.session && req.session.user) return next();
   if (req.headers.accept && req.headers.accept.includes('application/json')) {
@@ -53,6 +64,7 @@ function requireAuth(req, res, next) {
   }
   res.redirect('/login.html');
 }
+
 function requireAdmin(req, res, next) {
   if (req.session && req.session.user && req.session.user.role === 'admin') return next();
   res.status(403).json({ error: 'Acces refuse' });
@@ -159,7 +171,7 @@ app.get('/', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Static files that need auth
+// Static files that need auth (CSS, JS)
 app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => {
