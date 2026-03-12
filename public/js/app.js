@@ -810,14 +810,7 @@ function saveEvent(){
 
   } else if(rec==='weekly'||rec==='biweekly'){
     const recEnd=document.getElementById('evRecEnd').value;
-    if(!recEnd){
-      // Pas de date de fin → on crée au moins le créneau unique et on prévient
-      toCreate.push({...baseFields,date,startTime,endTime});
-      showToast('⚠️ Date de fin manquante : seul le premier créneau a été créé','error');
-      events.push({...toCreate[0],id:nextEventId++});
-      save();updateSidebar();renderCalendar();closeModal('eventModal');
-      return;
-    }
+    if(!recEnd){showToast('Veuillez saisir une date de fin de récurrence','error');return;}
     if(recEnd<date){showToast('La date de fin doit être après la date de début','error');return;}
     const vacMode=document.getElementById('evVacMode').value;
     const step=rec==='weekly'?7:14;
@@ -1337,7 +1330,7 @@ async function doLogout(){
 let currentUser=null;
 let editUserId=null;
 
-function canEdit(){return currentUser&&currentUser.role!=='consultation';}
+function canEdit(){return currentUser&&currentUser.role==='admin';}
 
 async function loadCurrentUser(){
   try{
@@ -1370,7 +1363,7 @@ async function renderUsers(){
       html+=`<tr>
         <td><strong>${esc(u.name)}</strong></td>
         <td>${esc(u.username)}</td>
-        <td><span style="background:${u.role==='admin'?'#e74c3c':u.role==='consultation'?'#95a5a6':'#3498db'};color:white;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:600">${u.role==='admin'?'Admin':u.role==='consultation'?'Consultation':'Utilisateur'}</span></td>
+        <td><span style="background:${u.role==='admin'?'#e74c3c':'#3498db'};color:white;padding:2px 8px;border-radius:12px;font-size:.72rem;font-weight:600">${u.role==='admin'?'Admin':'Consultation'}</span></td>
         <td><button class="btn" style="font-size:.7rem;padding:3px 6px;background:#eef4fb;color:#1b4f8a;border:none" onclick="openUserModal(${u.id},'${esc(u.name)}','${esc(u.username)}','${u.role}')">✏️</button></td>
       </tr>`;
     });

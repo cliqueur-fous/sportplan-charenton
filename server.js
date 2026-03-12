@@ -71,7 +71,7 @@ function requireAdmin(req, res, next) {
 }
 
 function requireEditor(req, res, next) {
-  if (req.session && req.session.user && req.session.user.role !== 'consultation') return next();
+  if (req.session && req.session.user && req.session.user.role === 'admin') return next();
   res.status(403).json({ error: 'Acces refuse — compte en consultation seule' });
 }
 
