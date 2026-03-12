@@ -525,6 +525,7 @@ function buildPrintHTML(evts,infraIds,from,to,org,title){
     <div class="print-header-left">
       <h1>SportPlan <span>Charenton-le-Pont</span></h1>
       <p>Direction des Sports — Planning des équipements sportifs</p>
+      <p style="font-size:.45rem;color:#bbb;margin-top:2px">Conçu par Florent Gayant</p>
     </div>
     <div class="print-header-right">
       <strong>${esc(title)}</strong><br>
@@ -620,6 +621,7 @@ function buildPrintGraphicalHTML(evts,infraIds,from,to,title){
     <div class="print-header-left">
       <h1>SportPlan <span>Charenton-le-Pont</span></h1>
       <p>Direction des Sports — Planning des équipements sportifs</p>
+      <p style="font-size:.45rem;color:#bbb;margin-top:2px">Conçu par Florent Gayant</p>
     </div>
     <div class="print-header-right">
       <strong>${esc(title)}</strong><br>
@@ -707,6 +709,21 @@ function printExtract(){
     document.getElementById('printArea').style.display='none';
     document.getElementById('printArea').innerHTML='';
   },1000);
+}
+
+function emailExtract(){
+  const title=document.getElementById('previewTitle').textContent.replace('Aperçu : ','');
+  const subject=encodeURIComponent('Planning SportPlan — '+title);
+  const body=encodeURIComponent(
+    'Bonjour,\n\n'+
+    'Veuillez trouver ci-joint le planning des équipements sportifs de Charenton-le-Pont.\n\n'+
+    'Période : '+title+'\n\n'+
+    '⚠️ Pensez à joindre le PDF du planning (Imprimer → Enregistrer en PDF, puis joindre).\n\n'+
+    'Cordialement,\n'+
+    'Direction des Sports — Charenton-le-Pont'
+  );
+  window.location.href='mailto:?subject='+subject+'&body='+body;
+  showToast('Client mail ouvert — pensez à joindre le PDF','success');
 }
 
 // ══════════════════════════════════════════
